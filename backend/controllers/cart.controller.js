@@ -2,14 +2,12 @@ import Product from "../models/product.model.js";
 
 export const getCartProducts = async (req, res) => {
   try {
-    // req.user.cartItems contains objects with a `product` field
-    const productIds = req.user.cartItems.map((item) => item.product);
-    const products = await Product.find({ _id: { $in: productIds } });
+    const products = await Product.find({ _id: { $in: req.user.cartItems } });
 
     // add quantity for each product
     const cartItems = products.map((product) => {
       const item = req.user.cartItems.find(
-        (cartItem) => cartItem.product.toString() === product.id
+        (cartItem) => cartItem.id === product.id
       );
       return { ...product.toJSON(), quantity: item.quantity };
     });
@@ -26,13 +24,11 @@ export const addToCart = async (req, res) => {
     const { productId } = req.body;
     const user = req.user;
 
-    const existingItem = user.cartItems.find(
-      (item) => item.product.toString() === productId
-    );
+    const existingItem = user.cartItems.find((item) => item.id === productId);
     if (existingItem) {
       existingItem.quantity += 1;
     } else {
-      user.cartItems.push({ product: productId, quantity: 1 });
+      user.cartItems.push(productId);
     }
 
     await user.save();
@@ -50,9 +46,7 @@ export const removeAllFromCart = async (req, res) => {
     if (!productId) {
       user.cartItems = [];
     } else {
-      user.cartItems = user.cartItems.filter(
-        (item) => item.product.toString() !== productId
-      );
+      user.cartItems = user.cartItems.filter((item) => item.id !== productId);
     }
     await user.save();
     res.json(user.cartItems);
@@ -66,15 +60,11 @@ export const updateQuantity = async (req, res) => {
     const { id: productId } = req.params;
     const { quantity } = req.body;
     const user = req.user;
-    const existingItem = user.cartItems.find(
-      (item) => item.product.toString() === productId
-    );
+    const existingItem = user.cartItems.find((item) => item.id === productId);
 
     if (existingItem) {
       if (quantity === 0) {
-        user.cartItems = user.cartItems.filter(
-          (item) => item.product.toString() !== productId
-        );
+        user.cartItems = user.cartItems.filter((item) => item.id !== productId);
         await user.save();
         return res.json(user.cartItems);
       }
